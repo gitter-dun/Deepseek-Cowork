@@ -26,7 +26,7 @@ module.exports = {
     // 是否启用 AI 功能
     enabled: true,
     
-    // happy-service 状态文件目录（绝对路径）
+    // AgentRuntime 会话状态目录（绝对路径，默认使用工作目录）
     // 例如: '/path/to/your/project/work_dir' 或 'C:/projects/my-project/work_dir'
     stateDir: null,
     

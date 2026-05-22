@@ -199,9 +199,7 @@ class ServerManager {
         dataDir: app.getPath('userData'),
         httpPort: this.config.port,
         wsPort: this.config.wsPort,
-        mode: 'electron',
-        skipHappyInitialization: true,
-        skipHappyClientConnect: true
+        mode: 'electron'
       });
 
       if (!initResult.success) {

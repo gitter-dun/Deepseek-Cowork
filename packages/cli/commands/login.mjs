@@ -61,57 +61,31 @@ export async function loginCommand(options) {
         
         const { createRequire } = await import('module');
         const require = createRequire(import.meta.url);
-        const SecretGenerator = require(config.getDataDir() + '/../../lib/happy-client/utils/SecretGenerator');
-        
-        // 验证格式
-        const validation = SecretGenerator.validateSecretFormat(secret.trim());
-        
+        const credentials = require('../../lib/happy/credentials');
+
+        const validation = credentials.validateSecret(secret.trim());
+
         if (!validation.valid) {
             spinner.fail(`Invalid secret format: ${validation.error}`);
             process.exit(1);
         }
-        
+
         spinner.text = 'Verifying with server...';
-        
-        // 尝试获取 Token 验证有效性
+
         try {
-            const Auth = require(config.getDataDir() + '/../../lib/happy-client/core/Auth');
-            const auth = new Auth();
-            const serverUrl = userSettings.get('happy.serverUrl') || 'https://api.deepseek-cowork.com';
-            const masterSecret = Buffer.from(validation.normalized, 'base64url');
-            
-            const token = await auth.getToken(masterSecret, serverUrl);
-            
+            const serverUrl = userSettings.get('happy.serverUrl') || credentials.DEFAULT_SERVER_URL;
+            const token = await credentials.getToken(validation.normalized, serverUrl);
+
             if (!token) {
                 spinner.fail('Failed to verify secret with server');
                 process.exit(1);
             }
-            
+
             spinner.text = 'Saving credentials...';
-            
-            // 保存 secret
+
             secureSettings.setSecret('happy.secret', validation.normalized);
-            
-            // 同步到 ~/.happy/access.key
-            const path = await import('path');
-            const fs = await import('fs');
-            const os = await import('os');
-            
-            const happyHomeDir = path.join(os.homedir(), '.happy');
-            const accessKeyPath = path.join(happyHomeDir, 'access.key');
-            
-            if (!fs.existsSync(happyHomeDir)) {
-                fs.mkdirSync(happyHomeDir, { recursive: true });
-            }
-            
-            const secretBytes = Buffer.from(validation.normalized, 'base64url');
-            const credentials = {
-                secret: secretBytes.toString('base64'),
-                token: token
-            };
-            
-            fs.writeFileSync(accessKeyPath, JSON.stringify(credentials, null, 2), 'utf8');
-            
+            credentials.syncToHappyHomeDir(validation.normalized, token, serverUrl, true);
+
             spinner.succeed('Login successful!');
             console.log('');
             console.log(chalk.green('You are now logged in.'));

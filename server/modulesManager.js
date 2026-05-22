@@ -28,11 +28,14 @@ const {
  */
 const coreServices = {
     /**
-     * HappyService - AI 通信核心（单例）
-     * 用于发送消息、监听 AI 响应、管理会话等
+     * AgentRuntime - AI 通信核心（单例，lib/happy）
      */
     get HappyService() {
-        return require('../lib/happy-service');
+        return require('../lib/happy');
+    },
+
+    get AgentRuntime() {
+        return require('../lib/happy');
     },
     
     /**

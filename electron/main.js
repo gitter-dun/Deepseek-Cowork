@@ -19,7 +19,8 @@ const ViewManager = require('./managers/view-manager');
 const UpdateManager = require('./managers/update-manager');
 
 // Happy Service
-const HappyService = require('../lib/happy-service');
+const AgentRuntime = require('../lib/happy');
+const happyCredentials = require('../lib/happy/credentials');
 
 // 用户设置
 const userSettings = require('../lib/user-settings');
@@ -336,11 +337,11 @@ function setupIpcHandlers() {
     return false;
   });
 
-  // ============ AI 相关 IPC 处理器（使用 HappyService） ============
+  // ============ AI 相关 IPC 处理器（使用 AgentRuntime） ============
 
   ipcMain.handle('ai:getStatus', () => {
-    // 返回 HappyService 的状态
-    const status = HappyService.getStatus();
+    // 返回 AgentRuntime 的状态
+    const status = AgentRuntime.getStatus();
     return {
       state: status.clientConnected ? 'connected' : 'disconnected',
       isConnected: status.clientConnected,
@@ -352,11 +353,11 @@ function setupIpcHandlers() {
   ipcMain.handle('ai:connect', async () => {
     try {
       // 使用当前 session 或默认 'main'
-      const currentSession = HappyService.sessionManager?.getCurrentSessionName() || 'main';
-      const result = await HappyService.connectToSession(currentSession);
+      const currentSession = AgentRuntime.sessionManager?.getCurrentSessionName() || 'main';
+      const result = await AgentRuntime.connectToSession(currentSession);
       return {
         success: result.success,
-        status: HappyService.getStatus(),
+        status: AgentRuntime.getStatus(),
         error: result.error
       };
     } catch (error) {
@@ -366,7 +367,7 @@ function setupIpcHandlers() {
 
   ipcMain.handle('ai:disconnect', async () => {
     try {
-      await HappyService.disconnectClient();
+      await AgentRuntime.disconnectClient();
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
@@ -375,7 +376,7 @@ function setupIpcHandlers() {
 
   ipcMain.handle('ai:sendMessage', async (event, text) => {
     try {
-      const result = await HappyService.sendMessage(text);
+      const result = await AgentRuntime.sendMessage(text);
       return result;
     } catch (error) {
       return { success: false, error: error.message };
@@ -383,20 +384,20 @@ function setupIpcHandlers() {
   });
 
   ipcMain.handle('ai:getMessages', (event, limit = 50) => {
-    return HappyService.getMessages(limit);
+    return AgentRuntime.getMessages(limit);
   });
 
   ipcMain.handle('ai:clearMessages', () => {
-    HappyService.clearMessages();
+    AgentRuntime.clearMessages();
     return true;
   });
 
   ipcMain.handle('ai:restoreMessages', (event, messages) => {
-    return HappyService.restoreMessages(messages);
+    return AgentRuntime.restoreMessages(messages);
   });
 
   ipcMain.handle('ai:getLatestUsage', () => {
-    return HappyService.getLatestUsage();
+    return AgentRuntime.getLatestUsage();
   });
 
   // 保留旧的执行指令接口（使用 serverManager 的 AIAgent）
@@ -427,7 +428,7 @@ function setupIpcHandlers() {
   
   ipcMain.handle('ai:allowPermission', async (event, sessionId, permissionId, mode, allowedTools) => {
     try {
-      return await HappyService.allowPermission(sessionId, permissionId, mode, allowedTools);
+      return await AgentRuntime.allowPermission(sessionId, permissionId, mode, allowedTools);
     } catch (error) {
       console.error('Failed to allow permission:', error);
       return { success: false, error: error.message };
@@ -436,7 +437,7 @@ function setupIpcHandlers() {
   
   ipcMain.handle('ai:denyPermission', async (event, sessionId, permissionId) => {
     try {
-      return await HappyService.denyPermission(sessionId, permissionId);
+      return await AgentRuntime.denyPermission(sessionId, permissionId);
     } catch (error) {
       console.error('Failed to deny permission:', error);
       return { success: false, error: error.message };
@@ -445,7 +446,7 @@ function setupIpcHandlers() {
   
   ipcMain.handle('ai:abort', async (event, sessionId) => {
     try {
-      return await HappyService.abortSession(sessionId);
+      return await AgentRuntime.abortSession(sessionId);
     } catch (error) {
       console.error('Failed to abort session:', error);
       return { success: false, error: error.message };
@@ -455,40 +456,40 @@ function setupIpcHandlers() {
   // ============ Happy Service IPC 处理器 ============
 
   ipcMain.handle('happy:getStatus', () => {
-    return HappyService.getStatus();
+    return AgentRuntime.getStatus();
   });
 
   ipcMain.handle('happy:isInitialized', () => {
-    return HappyService.isInitialized();
+    return AgentRuntime.isInitialized();
   });
 
   ipcMain.handle('happy:getSessionId', (event, name = 'main') => {
-    return HappyService.getSessionId(name);
+    return AgentRuntime.getSessionId(name);
   });
 
   ipcMain.handle('happy:getAllSessions', () => {
-    return HappyService.getAllSessions();
+    return AgentRuntime.getAllSessions();
   });
 
   // 获取格式化后的 session 状态（供 SessionHub 使用）
   ipcMain.handle('happy:getFormattedSessionState', () => {
-    return HappyService.getFormattedSessionState();
+    return AgentRuntime.getFormattedSessionState();
   });
 
   // 批量获取多个 session 的消息（供看板预览使用）
   ipcMain.handle('happy:getMultiSessionMessages', (event, sessionIds, limit) => {
-    return HappyService.getMultiSessionMessages(sessionIds, limit);
+    return AgentRuntime.getMultiSessionMessages(sessionIds, limit);
   });
 
   ipcMain.handle('happy:isDaemonRunning', async () => {
-    return await HappyService.isDaemonRunning();
+    return await AgentRuntime.isDaemonRunning();
   });
 
   ipcMain.handle('happy:initialize', async () => {
-    if (HappyService.isInitialized()) {
+    if (AgentRuntime.isInitialized()) {
       return { success: true, alreadyInitialized: true };
     }
-    return await initializeHappyService();
+    return await initializeAgentRuntime();
   });
 
   ipcMain.handle('happy:reinitialize', async () => {
@@ -504,7 +505,7 @@ function setupIpcHandlers() {
     
     console.log('[happy:reinitialize] State directory:', stateDir);
     
-    return await HappyService.reinitialize({
+    return await AgentRuntime.reinitialize({
       stateDir: stateDir,
       workDirs: happyConfig.workDirs || [{ name: 'main', path: process.cwd() }],
       baseDir: process.cwd(),
@@ -514,7 +515,7 @@ function setupIpcHandlers() {
   });
 
   ipcMain.handle('happy:reconnectSession', async (event, name) => {
-    return await HappyService.reconnectSession(name);
+    return await AgentRuntime.reconnectSession(name);
   });
 
   // ============ Happy Service 设置 IPC 处理器 ============
@@ -523,7 +524,7 @@ function setupIpcHandlers() {
     return {
       workspaceDir: userSettings.get('happy.workspaceDir'),
       defaultWorkspaceDir: userSettings.getDefaultWorkspaceDir(),
-      currentWorkspaceDir: HappyService.getCurrentWorkDir(),
+      currentWorkspaceDir: AgentRuntime.getCurrentWorkDir(),
       autoMonitor: userSettings.get('happy.autoMonitor') !== false
     };
   });
@@ -551,7 +552,7 @@ function setupIpcHandlers() {
   // 热切换工作目录
   ipcMain.handle('happy:switchWorkDir', async (event, newPath) => {
     if (!happyServiceInitialized) {
-      return { success: false, error: 'HappyService not initialized' };
+      return { success: false, error: 'AgentRuntime not initialized' };
     }
     
     try {
@@ -560,14 +561,8 @@ function setupIpcHandlers() {
       if (secureSettings.hasSecret('happy.secret')) {
         const secret = secureSettings.getSecret('happy.secret');
         if (secret) {
-          const CryptoUtils = require('../lib/happy-client/utils/CryptoUtils');
-          const KeyUtils = require('../lib/happy-client/utils/KeyUtils');
-          
           try {
-            const normalized = KeyUtils.normalizeSecretKey(secret);
-            const secretBytes = Buffer.from(CryptoUtils.decodeBase64(normalized, 'base64url'));
-            const derivedKey = await CryptoUtils.deriveKey(secretBytes, 'Happy Coder', ['analytics', 'id']);
-            anonId = derivedKey.toString('hex').slice(0, 16).toLowerCase();
+            anonId = await happyCredentials.deriveAnonId(secret);
           } catch (e) {
             console.warn('Failed to derive anonId:', e.message);
           }
@@ -575,7 +570,7 @@ function setupIpcHandlers() {
       }
       
       // 执行热切换
-      const result = await HappyService.switchWorkDir(newPath, anonId);
+      const result = await AgentRuntime.switchWorkDir(newPath, anonId);
       
       if (result.success) {
         // 保存用户选择的目录
@@ -593,12 +588,12 @@ function setupIpcHandlers() {
 
   // 列出所有已映射的工作目录
   ipcMain.handle('happy:listWorkDirs', () => {
-    return HappyService.listWorkDirs();
+    return AgentRuntime.listWorkDirs();
   });
 
   // 获取当前工作目录
   ipcMain.handle('happy:getCurrentWorkDir', () => {
-    return HappyService.getCurrentWorkDir();
+    return AgentRuntime.getCurrentWorkDir();
   });
 
   ipcMain.handle('happy:resetWorkspaceDir', async () => {
@@ -610,7 +605,7 @@ function setupIpcHandlers() {
     
     // 热切换到默认目录
     if (happyServiceInitialized) {
-      const result = await HappyService.switchWorkDir(defaultDir);
+      const result = await AgentRuntime.switchWorkDir(defaultDir);
       return { success: result.success, error: result.error, path: defaultDir };
     }
     
@@ -645,7 +640,7 @@ function setupIpcHandlers() {
   
   /**
    * 同步凭证到 ~/.happy/access.key 和 serverUrl 到 ~/.happy/settings.json
-   * 使 daemon (happy-cli) 能够读取正确的凭证和服务器地址
+   * 使 daemon（node_modules/happy）能够读取正确的凭证和服务器地址
    * 
    * @param {string} secretBase64url - base64url 编码的 secret
    * @param {string} token - JWT token
@@ -653,54 +648,7 @@ function setupIpcHandlers() {
    * @param {boolean} clearMachineId - 是否清理 machineId（账号切换时需要）
    */
   function syncCredentialsToHappyDir(secretBase64url, token, serverUrl, clearMachineId = false) {
-    // 跨平台获取 home 目录
-    const happyHomeDir = path.join(os.homedir(), '.happy');
-    const accessKeyPath = path.join(happyHomeDir, 'access.key');
-    const settingsPath = path.join(happyHomeDir, 'settings.json');
-    
-    // 确保目录存在
-    if (!fs.existsSync(happyHomeDir)) {
-      fs.mkdirSync(happyHomeDir, { recursive: true });
-    }
-    
-    // 转换：base64url → bytes → 标准 base64
-    // happy-cli 使用标准 base64 存储 secret
-    const secretBytes = Buffer.from(secretBase64url, 'base64url');
-    const secretBase64 = secretBytes.toString('base64');
-    
-    // 写入凭证文件（格式与 happy-cli 的 writeCredentialsLegacy 一致，不包含 serverUrl）
-    const credentials = {
-      secret: secretBase64,
-      token: token
-    };
-    
-    fs.writeFileSync(accessKeyPath, JSON.stringify(credentials, null, 2), 'utf8');
-    console.log('[syncCredentialsToHappyDir] Credentials synced to:', accessKeyPath);
-    
-    // 更新 settings.json：写入 serverUrl，可选清理 machineId
-    const DEFAULT_SERVER_URL = 'https://api.deepseek-cowork.com';
-    try {
-      let settings = {};
-      if (fs.existsSync(settingsPath)) {
-        settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-      }
-      
-      // 写入 serverUrl（为空时使用默认服务器地址）
-      settings.serverUrl = serverUrl || DEFAULT_SERVER_URL;
-      console.log('[syncCredentialsToHappyDir] Setting serverUrl:', settings.serverUrl);
-      
-      // 如果需要清理 machineId（账号切换场景）
-      if (clearMachineId && settings.machineId) {
-        console.log('[syncCredentialsToHappyDir] Clearing old machineId:', settings.machineId);
-        delete settings.machineId;
-        delete settings.machineIdConfirmedByServer;
-      }
-      
-      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
-      console.log('[syncCredentialsToHappyDir] settings.json updated');
-    } catch (e) {
-      console.warn('[syncCredentialsToHappyDir] Failed to update settings.json:', e.message);
-    }
+    happyCredentials.syncToHappyHomeDir(secretBase64url, token, serverUrl, clearMachineId);
   }
 
   // ============ Happy Secret 管理 IPC 处理器 ============
@@ -711,8 +659,7 @@ function setupIpcHandlers() {
 
   ipcMain.handle('happy:generateSecret', () => {
     try {
-      const SecretGenerator = require('../lib/happy-client/utils/SecretGenerator');
-      const result = SecretGenerator.generateSecretWithFormats();
+      const result = happyCredentials.generateSecret();
       return {
         success: true,
         formatted: result.formatted,
@@ -726,8 +673,7 @@ function setupIpcHandlers() {
 
   ipcMain.handle('happy:validateSecret', (event, input) => {
     try {
-      const SecretGenerator = require('../lib/happy-client/utils/SecretGenerator');
-      return SecretGenerator.validateSecretFormat(input);
+      return happyCredentials.validateSecret(input);
     } catch (error) {
       return { valid: false, normalized: null, error: error.message };
     }
@@ -735,25 +681,15 @@ function setupIpcHandlers() {
 
   ipcMain.handle('happy:verifySecret', async (event, secret) => {
     try {
-      const SecretGenerator = require('../lib/happy-client/utils/SecretGenerator');
-      const Auth = require('../lib/happy-client/core/Auth');
-      
-      // 验证格式
-      const validation = SecretGenerator.validateSecretFormat(secret);
+      const validation = happyCredentials.validateSecret(secret);
       if (!validation.valid) {
         return { success: false, error: validation.error };
       }
-      
-      // 尝试获取 Token 验证 Secret 有效性
-      const auth = new Auth();
-      const serverUrl = userSettings.get('happy.serverUrl') || 'https://api.deepseek-cowork.com';
-      const masterSecret = Buffer.from(validation.normalized, 'base64url');
-      
+
       try {
-        const token = await auth.getToken(masterSecret, serverUrl);
+        const token = await happyCredentials.getToken(validation.normalized, userSettings.get('happy.serverUrl') || happyCredentials.DEFAULT_SERVER_URL);
         if (token) {
-          // 返回 token 以便后续同步到 ~/.happy/access.key
-          return { success: true, normalized: validation.normalized, token: token };
+          return { success: true, normalized: validation.normalized, token };
         }
         return { success: false, error: '无法获取 Token，请检查 Secret 是否正确' };
       } catch (authError) {
@@ -769,11 +705,7 @@ function setupIpcHandlers() {
   ipcMain.handle('happy:saveSecret', async (event, secret, providedToken = null) => {
     console.log('[happy:saveSecret] Called, providedToken:', !!providedToken);
     try {
-      const SecretGenerator = require('../lib/happy-client/utils/SecretGenerator');
-      
-      // 验证格式
-      console.log('[happy:saveSecret] Validating secret format...');
-      const validation = SecretGenerator.validateSecretFormat(secret);
+      const validation = happyCredentials.validateSecret(secret);
       if (!validation.valid) {
         console.log('[happy:saveSecret] Validation failed:', validation.error);
         return { success: false, error: validation.error };
@@ -793,23 +725,23 @@ function setupIpcHandlers() {
           // 断开现有连接
           if (happyServiceInitialized) {
             try {
-              await HappyService.disconnectClient();
+              await AgentRuntime.disconnectClient();
             } catch (e) {
               console.warn('[saveSecret] Failed to disconnect client:', e.message);
             }
           }
           
           // 标记账户变更，确保下次初始化时清理 daemon sessions
-          if (HappyService.sessionManager) {
-            HappyService.sessionManager._accountChanged = true;
-            HappyService.sessionManager.removeStateFile();
-            HappyService.sessionManager.clearSessions();
+          if (AgentRuntime.sessionManager) {
+            AgentRuntime.sessionManager._accountChanged = true;
+            AgentRuntime.sessionManager.removeStateFile();
+            AgentRuntime.sessionManager.clearSessions();
             console.log('[saveSecret] Session state marked for cleanup');
           }
           
           // 清除消息历史
           try {
-            HappyService.clearMessages();
+            AgentRuntime.clearMessages();
           } catch (e) {
             console.warn('[saveSecret] Failed to clear messages:', e.message);
           }
@@ -830,12 +762,9 @@ function setupIpcHandlers() {
         // 如果没有提供 token，需要重新获取
         console.log('[happy:saveSecret] No token provided, fetching from server...');
         try {
-          const Auth = require('../lib/happy-client/core/Auth');
-          const auth = new Auth();
-          const serverUrl = userSettings.get('happy.serverUrl') || 'https://api.deepseek-cowork.com';
+          const serverUrl = userSettings.get('happy.serverUrl') || happyCredentials.DEFAULT_SERVER_URL;
           console.log('[happy:saveSecret] Server URL:', serverUrl);
-          const masterSecret = Buffer.from(validation.normalized, 'base64url');
-          token = await auth.getToken(masterSecret, serverUrl);
+          token = await happyCredentials.getToken(validation.normalized, serverUrl);
           console.log('[happy:saveSecret] Token fetched:', !!token);
         } catch (e) {
           console.warn('[saveSecret] Failed to get token for sync:', e.message);
@@ -861,19 +790,14 @@ function setupIpcHandlers() {
       
       console.log('[happy:saveSecret] isAccountSwitching:', isAccountSwitching, 'hasExistingSecret:', hasExistingSecret, 'happyServiceInitialized:', happyServiceInitialized);
       
-      // 热切换：如果是账号切换且 HappyService 已初始化，尝试重启 Daemon 而非整个应用
+      // 热切换：如果是账号切换且 AgentRuntime 已初始化，尝试重启 Daemon 而非整个应用
       if (isAccountSwitching && hasExistingSecret && happyServiceInitialized) {
         console.log('[saveSecret] Attempting hot account switch via daemon restart...');
         try {
           // 计算新账户的 anonId
           let newAnonId = null;
           try {
-            const CryptoUtils = require('../lib/happy-client/utils/CryptoUtils');
-            const KeyUtils = require('../lib/happy-client/utils/KeyUtils');
-            const normalized = KeyUtils.normalizeSecretKey(validation.normalized);
-            const secretBytes = Buffer.from(CryptoUtils.decodeBase64(normalized, 'base64url'));
-            const derivedKey = await CryptoUtils.deriveKey(secretBytes, 'Happy Coder', ['analytics', 'id']);
-            newAnonId = derivedKey.toString('hex').slice(0, 16).toLowerCase();
+            newAnonId = await happyCredentials.deriveAnonId(validation.normalized);
             console.log('[saveSecret] Computed new anonId:', newAnonId);
           } catch (e) {
             console.warn('[saveSecret] Failed to derive anonId:', e.message);
@@ -885,7 +809,7 @@ function setupIpcHandlers() {
             serverUrl: userSettings.get('happy.serverUrl') || undefined,
             anonId: newAnonId
           };
-          const restartResult = await HappyService.restartDaemon(newOptions);
+          const restartResult = await AgentRuntime.restartDaemon(newOptions);
           if (restartResult.success) {
             console.log('[saveSecret] Hot account switch successful, reconnecting HappyClient...');
             // 重新连接 HappyClient（等待连接完成，确保消息功能可用）
@@ -902,7 +826,7 @@ function setupIpcHandlers() {
           } else {
             // Daemon 重启失败，尝试完整重新初始化
             console.warn('[saveSecret] Daemon restart failed, trying full reinitialization:', restartResult.error);
-            const reinitResult = await tryReinitializeHappyService();
+            const reinitResult = await tryReinitializeAgentRuntime();
             if (reinitResult.success) {
               console.log('[saveSecret] Full reinitialization successful');
               return { success: true, needsRestart: false, hotSwitched: true };
@@ -915,7 +839,7 @@ function setupIpcHandlers() {
           // 重启失败，尝试完整重新初始化
           console.warn('[saveSecret] Hot switch failed, trying full reinitialization:', e.message);
           try {
-            const reinitResult = await tryReinitializeHappyService();
+            const reinitResult = await tryReinitializeAgentRuntime();
             if (reinitResult.success) {
               console.log('[saveSecret] Full reinitialization successful after error');
               return { success: true, needsRestart: false, hotSwitched: true };
@@ -930,11 +854,11 @@ function setupIpcHandlers() {
         }
       }
       
-      // 首次登录热初始化：如果 HappyService 未初始化，尝试立即初始化
+      // 首次登录热初始化：如果 AgentRuntime 未初始化，尝试立即初始化
       if (!happyServiceInitialized) {
         console.log('[saveSecret] First login detected, attempting hot initialization...');
         try {
-          const initResult = await initializeHappyService();
+          const initResult = await initializeAgentRuntime();
           if (initResult && initResult.success) {
             console.log('[saveSecret] Hot initialization successful');
             // 发送初始化成功事件到渲染进程
@@ -956,7 +880,7 @@ function setupIpcHandlers() {
         }
       }
       
-      // HappyService 已初始化，无需额外操作
+      // AgentRuntime 已初始化，无需额外操作
       return { success: true, needsRestart: false };
     } catch (error) {
       console.error('Failed to save secret:', error);
@@ -969,8 +893,8 @@ function setupIpcHandlers() {
       const hasSecret = secureSettings.hasSecret('happy.secret');
       const serverUrl = userSettings.get('happy.serverUrl') || 'https://api.deepseek-cowork.com';
       
-      // 获取 HappyService 状态
-      const serviceStatus = HappyService.getStatus();
+      // 获取 AgentRuntime 状态
+      const serviceStatus = AgentRuntime.getStatus();
       
       // 如果有 Secret，生成匿名 ID（参考 Happy 项目的 anonID 实现）
       let anonId = null;
@@ -978,22 +902,7 @@ function setupIpcHandlers() {
         try {
           const secret = secureSettings.getSecret('happy.secret');
           if (secret) {
-            const CryptoUtils = require('../lib/happy-client/utils/CryptoUtils');
-            const KeyUtils = require('../lib/happy-client/utils/KeyUtils');
-            
-            // 标准化 secret 并获取字节数组
-            let secretBytes;
-            try {
-              const normalized = KeyUtils.normalizeSecretKey(secret);
-              secretBytes = Buffer.from(CryptoUtils.decodeBase64(normalized, 'base64url'));
-            } catch (e) {
-              secretBytes = Buffer.from(CryptoUtils.decodeBase64(secret, 'base64url'));
-            }
-            
-            // 派生匿名 ID：deriveKey(masterSecret, 'Happy Coder', ['analytics', 'id'])
-            // 然后取前 16 个 hex 字符
-            const derivedKey = await CryptoUtils.deriveKey(secretBytes, 'Happy Coder', ['analytics', 'id']);
-            anonId = derivedKey.toString('hex').slice(0, 16).toLowerCase();
+            anonId = await happyCredentials.deriveAnonId(secret);
           }
         } catch (e) {
           console.error('Failed to derive anon ID:', e);
@@ -1033,44 +942,13 @@ function setupIpcHandlers() {
       }
       
       console.log('[getFormattedSecret] Secret type:', typeof secret, 'length:', secret.length);
-      
-      const SecretGenerator = require('../lib/happy-client/utils/SecretGenerator');
-      const KeyUtils = require('../lib/happy-client/utils/KeyUtils');
-      const CryptoUtils = require('../lib/happy-client/utils/CryptoUtils');
-      
-      let secretBytes;
-      
-      // 尝试多种解码方式
-      // 1. 先尝试 base64url 解码
+
       try {
-        secretBytes = Buffer.from(CryptoUtils.decodeBase64(secret, 'base64url'));
-        console.log('[getFormattedSecret] Decoded as base64url, bytes length:', secretBytes.length);
-        
-        if (secretBytes.length === 32) {
-          // 成功解码为 32 字节
-          const formatted = SecretGenerator.formatSecretForBackup(secretBytes);
-          return { success: true, formatted };
-        }
+        const formatted = happyCredentials.formatSecretForBackup(secret);
+        return { success: true, formatted };
       } catch (e) {
-        console.log('[getFormattedSecret] Not base64url format, trying other formats...');
+        return { success: false, error: 'Secret 格式无效，请重新配置账户' };
       }
-      
-      // 2. 尝试使用 KeyUtils.normalizeSecretKey 来标准化
-      try {
-        const normalized = KeyUtils.normalizeSecretKey(secret);
-        secretBytes = Buffer.from(CryptoUtils.decodeBase64(normalized, 'base64url'));
-        console.log('[getFormattedSecret] Normalized and decoded, bytes length:', secretBytes.length);
-        
-        if (secretBytes.length === 32) {
-          const formatted = SecretGenerator.formatSecretForBackup(secretBytes);
-          return { success: true, formatted };
-        }
-      } catch (e) {
-        console.log('[getFormattedSecret] Normalization failed:', e.message);
-      }
-      
-      // 3. 如果都失败，返回错误
-      return { success: false, error: 'Secret 格式无效，请重新配置账户' };
     } catch (error) {
       console.error('Failed to get formatted secret:', error);
       return { success: false, error: error.message };
@@ -1082,16 +960,16 @@ function setupIpcHandlers() {
       // 1. 断开 HappyClient 连接
       if (happyServiceInitialized) {
         try {
-          await HappyService.disconnectClient();
+          await AgentRuntime.disconnectClient();
         } catch (e) {
           console.warn('Failed to disconnect HappyClient:', e.message);
         }
         
         // 2. 清除 Session 状态文件和内存状态
         try {
-          if (HappyService.sessionManager) {
-            HappyService.sessionManager.removeStateFile();
-            HappyService.sessionManager.clearSessions();
+          if (AgentRuntime.sessionManager) {
+            AgentRuntime.sessionManager.removeStateFile();
+            AgentRuntime.sessionManager.clearSessions();
             console.log('[logout] Session state cleared');
           }
         } catch (e) {
@@ -1100,7 +978,7 @@ function setupIpcHandlers() {
         
         // 3. 清除消息历史缓存
         try {
-          HappyService.clearMessages();
+          AgentRuntime.clearMessages();
           console.log('[logout] Message history cleared');
         } catch (e) {
           console.warn('Failed to clear messages:', e.message);
@@ -1113,8 +991,8 @@ function setupIpcHandlers() {
       
       // 5. 停止 Daemon 清理历史 session
       try {
-        if (HappyService.daemonManager) {
-          await HappyService.daemonManager.stopDaemon();
+        if (AgentRuntime.daemonManager) {
+          await AgentRuntime.daemonManager.stopDaemon();
           console.log('[logout] Daemon stopped');
         }
       } catch (e) {
@@ -1148,9 +1026,9 @@ function setupIpcHandlers() {
         console.warn('Failed to clear machineId:', e.message);
       }
       
-      // 7. 重置 HappyService 内部状态
-      HappyService.reset();
-      console.log('[logout] HappyService reset');
+      // 7. 重置 AgentRuntime 内部状态
+      AgentRuntime.reset();
+      console.log('[logout] AgentRuntime reset');
       
       // 8. 重置初始化标志
       happyServiceInitialized = false;
@@ -1170,7 +1048,7 @@ function setupIpcHandlers() {
       // 1. 断开 HappyClient 连接
       if (happyServiceInitialized) {
         try {
-          await HappyService.disconnectClient();
+          await AgentRuntime.disconnectClient();
           console.log('[changeServer] HappyClient disconnected');
         } catch (e) {
           console.warn('Failed to disconnect HappyClient:', e.message);
@@ -1178,9 +1056,9 @@ function setupIpcHandlers() {
         
         // 2. 清除 Session 状态文件和内存状态
         try {
-          if (HappyService.sessionManager) {
-            HappyService.sessionManager.removeStateFile();
-            HappyService.sessionManager.clearSessions();
+          if (AgentRuntime.sessionManager) {
+            AgentRuntime.sessionManager.removeStateFile();
+            AgentRuntime.sessionManager.clearSessions();
             console.log('[changeServer] Session state cleared');
           }
         } catch (e) {
@@ -1189,7 +1067,7 @@ function setupIpcHandlers() {
         
         // 3. 清除消息历史缓存
         try {
-          HappyService.clearMessages();
+          AgentRuntime.clearMessages();
           console.log('[changeServer] Message history cleared');
         } catch (e) {
           console.warn('Failed to clear messages:', e.message);
@@ -1202,8 +1080,8 @@ function setupIpcHandlers() {
       
       // 5. 停止 Daemon 清理历史 session
       try {
-        if (HappyService.daemonManager) {
-          await HappyService.daemonManager.stopDaemon();
+        if (AgentRuntime.daemonManager) {
+          await AgentRuntime.daemonManager.stopDaemon();
           console.log('[changeServer] Daemon stopped');
         }
       } catch (e) {
@@ -1237,15 +1115,15 @@ function setupIpcHandlers() {
         console.warn('Failed to clear machineId:', e.message);
       }
       
-      // 7. 重置 HappyService 内部状态
-      HappyService.reset();
-      console.log('[changeServer] HappyService reset');
+      // 7. 重置 AgentRuntime 内部状态
+      AgentRuntime.reset();
+      console.log('[changeServer] AgentRuntime reset');
       
       // 8. 保存新服务器地址
       userSettings.set('happy.serverUrl', newServerUrl || null);
       console.log('[changeServer] Server URL saved:', newServerUrl || '(default)');
       
-      // 9. 重置 HappyService 初始化状态
+      // 9. 重置 AgentRuntime 初始化状态
       happyServiceInitialized = false;
       
       return { success: true };
@@ -1264,8 +1142,8 @@ function setupIpcHandlers() {
       serverUrl: userSettings.get('happy.serverUrl'),
       workspaceDir: userSettings.get('happy.workspaceDir'),
       defaultWorkspaceDir: userSettings.getDefaultWorkspaceDir(),
-      currentWorkDir: HappyService.getCurrentWorkDir(),
-      workDirs: HappyService.listWorkDirs(),
+      currentWorkDir: AgentRuntime.getCurrentWorkDir(),
+      workDirs: AgentRuntime.listWorkDirs(),
       autoMonitor: userSettings.get('happy.autoMonitor') !== false
     };
   });
@@ -1277,9 +1155,9 @@ function setupIpcHandlers() {
       if (oldValue !== settings.permissionMode) {
         userSettings.set('happy.permissionMode', settings.permissionMode);
         
-        // 热切换：直接更新 HappyService 的权限模式，无需重启
+        // 热切换：直接更新 AgentRuntime 的权限模式，无需重启
         if (happyServiceInitialized) {
-          const result = HappyService.setPermissionMode(settings.permissionMode);
+          const result = AgentRuntime.setPermissionMode(settings.permissionMode);
           if (result.success) {
             console.log('[saveSettings] Permission mode hot-switched to:', settings.permissionMode);
           } else {
@@ -1541,7 +1419,7 @@ function setupIpcHandlers() {
       if (provider && provider !== 'anthropic' && happyServiceInitialized) {
         console.log('Claude Code config changed, restarting daemon...');
         try {
-          const restartResult = await HappyService.restartDaemon();
+          const restartResult = await AgentRuntime.restartDaemon();
           daemonRestarted = restartResult.success;
           if (daemonRestarted) {
             console.log('Daemon restarted successfully, new config applied');
@@ -1567,21 +1445,21 @@ function setupIpcHandlers() {
   // ============ Daemon 管理 IPC 处理器 ============
 
   ipcMain.handle('daemon:start', async () => {
-    if (!happyServiceInitialized || !HappyService.daemonManager) {
+    if (!happyServiceInitialized || !AgentRuntime.daemonManager) {
       return { success: false, error: 'Happy Service not initialized' };
     }
     
     try {
       console.log('IPC: daemon:start - Starting daemon...');
-      const started = await HappyService.daemonManager.startDaemon();
-      const status = HappyService.daemonManager.getStatus();
+      const started = await AgentRuntime.daemonManager.startDaemon();
+      const status = AgentRuntime.daemonManager.getStatus();
       console.log('IPC: daemon:start - Result:', started, status);
       
       // 启动成功后创建 session（daemon 刚启动，是冷启动场景）
       let sessions = {};
-      if (started && HappyService.sessionManager) {
+      if (started && AgentRuntime.sessionManager) {
         console.log('IPC: daemon:start - Creating sessions (cold start)...');
-        sessions = await HappyService.sessionManager.createAllSessions({ wasDaemonRunning: false });
+        sessions = await AgentRuntime.sessionManager.createAllSessions({ wasDaemonRunning: false });
         console.log('IPC: daemon:start - Sessions:', Object.keys(sessions));
       }
       
@@ -1598,20 +1476,20 @@ function setupIpcHandlers() {
   });
 
   ipcMain.handle('daemon:stop', async () => {
-    if (!happyServiceInitialized || !HappyService.daemonManager) {
+    if (!happyServiceInitialized || !AgentRuntime.daemonManager) {
       return { success: false, error: 'Happy Service not initialized' };
     }
     
     try {
       console.log('IPC: daemon:stop - Stopping daemon...');
-      const stopped = await HappyService.daemonManager.stopDaemon();
-      const status = HappyService.daemonManager.getStatus();
+      const stopped = await AgentRuntime.daemonManager.stopDaemon();
+      const status = AgentRuntime.daemonManager.getStatus();
       console.log('IPC: daemon:stop - Result:', stopped, status);
       
       // 停止成功后清理本地状态
       if (stopped) {
         console.log('IPC: daemon:stop - Cleaning up local state...');
-        await HappyService.onDaemonStopped();
+        await AgentRuntime.onDaemonStopped();
       }
       
       // 通知渲染进程状态变化
@@ -1633,12 +1511,12 @@ function setupIpcHandlers() {
     
     try {
       console.log('IPC: daemon:restart - Restarting daemon...');
-      const result = await HappyService.restartDaemon();
+      const result = await AgentRuntime.restartDaemon();
       console.log('IPC: daemon:restart - Result:', result);
       
       // 通知渲染进程状态变化
       if (result.success && mainWindow && !mainWindow.isDestroyed()) {
-        const status = HappyService.daemonManager?.getStatus();
+        const status = AgentRuntime.daemonManager?.getStatus();
         if (status) {
           mainWindow.webContents.send('daemon:statusChanged', status);
         }
@@ -1652,10 +1530,10 @@ function setupIpcHandlers() {
   });
 
   ipcMain.handle('daemon:getStatus', () => {
-    if (!happyServiceInitialized || !HappyService.daemonManager) {
+    if (!happyServiceInitialized || !AgentRuntime.daemonManager) {
       return { running: false, error: 'Happy Service not initialized' };
     }
-    return HappyService.daemonManager.getStatus();
+    return AgentRuntime.daemonManager.getStatus();
   });
 
   // ============ 窗口控制 IPC 处理器 ============
@@ -1881,7 +1759,7 @@ function setupIpcHandlers() {
 /**
  * 初始化 Happy Service（异步，不阻塞主流程）
  */
-async function initializeHappyService() {
+async function initializeAgentRuntime() {
   try {
     console.log('Initializing Happy Service...');
 
@@ -1944,7 +1822,7 @@ async function initializeHappyService() {
     console.log('  Debug mode:', debug);
 
     // 设置 Claude Code 环境变量获取器
-    HappyService.setClaudeCodeEnvGetter(() => {
+    AgentRuntime.setClaudeCodeEnvGetter(() => {
       const claudeConfig = userSettings.get('happy.claudeCode') || {};
       const provider = claudeConfig.provider || 'anthropic';
       
@@ -2023,7 +1901,7 @@ async function initializeHappyService() {
     });
 
     // 初始化 Happy Service
-    const result = await HappyService.initialize({
+    const result = await AgentRuntime.initialize({
       stateDir: stateDir,
       workDirs: workDirs,
       baseDir: workspaceDir,
@@ -2047,15 +1925,15 @@ async function initializeHappyService() {
       try {
         const ChannelBridge = require('../lib/channel-bridge');
         if (!ChannelBridge.isInitialized()) {
-          ChannelBridge.init({ happyService: HappyService });
+          ChannelBridge.init({ agentRuntime: AgentRuntime });
           console.log('Channel Bridge initialized successfully');
         }
       } catch (err) {
         console.warn('Channel Bridge initialization failed:', err.message);
       }
       
-      // 设置 HappyService 事件转发到渲染进程
-      setupHappyServiceEventForwarding();
+      // 设置 AgentRuntime 事件转发到渲染进程
+      setupAgentRuntimeEventForwarding();
       
       // 连接 HappyClient 到 Session（异步，不阻塞，自动选择 currentSession）
       connectHappyClient().catch(err => {
@@ -2082,13 +1960,13 @@ async function initializeHappyService() {
 }
 
 /**
- * 尝试重新初始化 HappyService（热切换的回退方案）
+ * 尝试重新初始化 AgentRuntime（热切换的回退方案）
  * 用于 daemon restart 失败时
  * @returns {Promise<Object>} 结果 { success, error?, ... }
  */
-async function tryReinitializeHappyService() {
+async function tryReinitializeAgentRuntime() {
   try {
-    console.log('[tryReinitializeHappyService] Building initialization options...');
+    console.log('[tryReinitializeAgentRuntime] Building initialization options...');
     
     // 获取配置
     const config = require('../config');
@@ -2105,10 +1983,10 @@ async function tryReinitializeHappyService() {
     // 确保状态目录存在
     if (!fs.existsSync(stateDir)) {
       fs.mkdirSync(stateDir, { recursive: true });
-      console.log('[tryReinitializeHappyService] Created state directory:', stateDir);
+      console.log('[tryReinitializeAgentRuntime] Created state directory:', stateDir);
     }
     
-    console.log('[tryReinitializeHappyService] State directory:', stateDir);
+    console.log('[tryReinitializeAgentRuntime] State directory:', stateDir);
     
     // 确定工作目录
     const defaultWorkspace = userSettings.getDefaultWorkspaceDir();
@@ -2130,10 +2008,10 @@ async function tryReinitializeHappyService() {
     const serverUrl = userSettings.get('happy.serverUrl');
     const debug = userSettings.get('happy.debug') || false;
     
-    console.log('[tryReinitializeHappyService] Calling HappyService.reinitialize...');
+    console.log('[tryReinitializeAgentRuntime] Calling AgentRuntime.reinitialize...');
     
     // 调用重新初始化
-    const result = await HappyService.reinitialize({
+    const result = await AgentRuntime.reinitialize({
       stateDir: stateDir,
       workDirs: workDirs,
       baseDir: workspaceDir,
@@ -2148,14 +2026,14 @@ async function tryReinitializeHappyService() {
     
     if (result.success) {
       happyServiceInitialized = true;
-      console.log('[tryReinitializeHappyService] Reinitialization successful');
+      console.log('[tryReinitializeAgentRuntime] Reinitialization successful');
       
       // 设置事件转发（如果尚未设置）
-      setupHappyServiceEventForwarding();
+      setupAgentRuntimeEventForwarding();
       
       // 连接 HappyClient（自动选择 currentSession）
       connectHappyClient().catch(err => {
-        console.error('[tryReinitializeHappyService] HappyClient connection failed:', err.message);
+        console.error('[tryReinitializeAgentRuntime] HappyClient connection failed:', err.message);
       });
       
       // 通知渲染进程
@@ -2172,20 +2050,20 @@ async function tryReinitializeHappyService() {
         });
       }
     } else {
-      console.error('[tryReinitializeHappyService] Reinitialization failed:', result.error);
+      console.error('[tryReinitializeAgentRuntime] Reinitialization failed:', result.error);
     }
     
     return result;
   } catch (error) {
-    console.error('[tryReinitializeHappyService] Error:', error);
+    console.error('[tryReinitializeAgentRuntime] Error:', error);
     return { success: false, error: error.message };
   }
 }
 
 /**
- * 设置 HappyService 事件转发到渲染进程
+ * 设置 AgentRuntime 事件转发到渲染进程
  */
-function setupHappyServiceEventForwarding() {
+function setupAgentRuntimeEventForwarding() {
   const happyEvents = [
     'happy:connected',
     'happy:disconnected',
@@ -2195,10 +2073,10 @@ function setupHappyServiceEventForwarding() {
     'happy:usage',
     'happy:messagesRestored',
     'happy:agentState',  // agentState 更新事件（权限请求）
-    // daemon 相关事件（由 HappyService 转发）
+    // daemon 相关事件（由 AgentRuntime 转发）
     'daemon:statusChanged',
     'daemon:startProgress',
-    // session 状态更新事件（由 SessionManager 触发，HappyService 转发）
+    // session 状态更新事件（由 SessionManager 触发，AgentRuntime 转发）
     'session:stateUpdated',
     // 单个 session 状态变化事件（轻量级，用于增量更新 SessionHub 卡片）
     'session:statusChanged',
@@ -2207,14 +2085,14 @@ function setupHappyServiceEventForwarding() {
   ];
   
   happyEvents.forEach(eventName => {
-    HappyService.on(eventName, (data) => {
+    AgentRuntime.on(eventName, (data) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send(eventName, data);
       }
     });
   });
   
-  console.log('HappyService event forwarding configured');
+  console.log('AgentRuntime event forwarding configured');
 }
 
 /**
@@ -2224,7 +2102,7 @@ function setupHappyServiceEventForwarding() {
 async function connectHappyClient(sessionName = null) {
   try {
     // 如果未指定 sessionName，从 SessionManager 获取当前 session
-    const actualSessionName = sessionName || HappyService.sessionManager?.getCurrentSessionName() || 'main';
+    const actualSessionName = sessionName || AgentRuntime.sessionManager?.getCurrentSessionName() || 'main';
     console.log(`Connecting HappyClient to session: ${actualSessionName} (requested: ${sessionName || 'auto'})`);
     
     // 计算 anonId 用于账户变更检测
@@ -2232,18 +2110,13 @@ async function connectHappyClient(sessionName = null) {
     const happySecret = secureSettings.getSecret('happy.secret');
     if (happySecret) {
       try {
-        const CryptoUtils = require('../lib/happy-client/utils/CryptoUtils');
-        const KeyUtils = require('../lib/happy-client/utils/KeyUtils');
-        const normalized = KeyUtils.normalizeSecretKey(happySecret);
-        const secretBytes = Buffer.from(CryptoUtils.decodeBase64(normalized, 'base64url'));
-        const derivedKey = await CryptoUtils.deriveKey(secretBytes, 'Happy Coder', ['analytics', 'id']);
-        anonId = derivedKey.toString('hex').slice(0, 16).toLowerCase();
+        anonId = await happyCredentials.deriveAnonId(happySecret);
       } catch (e) {
         console.warn('Failed to derive anonId for connectHappyClient:', e.message);
       }
     }
     
-    const result = await HappyService.connectToSession(actualSessionName, { anonId });
+    const result = await AgentRuntime.connectToSession(actualSessionName, { anonId });
     
     if (result.success) {
       console.log('HappyClient connected successfully');
@@ -2287,7 +2160,7 @@ async function cleanupAndQuit() {
     if (happyServiceInitialized) {
       console.log('Cleaning up Happy Service (preserving daemon/sessions)...');
       try {
-        await HappyService.cleanup();
+        await AgentRuntime.cleanup();
         happyServiceInitialized = false;
         console.log('Happy Service cleanup complete (daemon/sessions preserved)');
       } catch (error) {
@@ -2472,7 +2345,7 @@ async function bootstrap() {
     console.log('DeepSeek Cowork started');
     
     // 8. Initialize Happy Service (async, non-blocking)
-    initializeHappyService().catch(err => {
+    initializeAgentRuntime().catch(err => {
       console.error('Happy Service initialization failed:', err.message);
     });
     
