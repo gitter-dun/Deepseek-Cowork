@@ -1,5 +1,37 @@
 # Release Notes
 
+## v0.4.0
+
+This release simplifies Happy integration: Cowork owns the shell, Happy is consumed as an npm runtime through a single `lib/happy/` boundary.
+
+### Highlights
+
+- Unified **AgentRuntime** (`lib/happy/`) as the only integration surface for Electron, LocalService, CLI, and server modules.
+- Switched from vendored `lib/happy-cli` / `lib/happy-service` / `lib/happy-client` to npm packages **`happy@1.1.10-beta.6`** and **`@slopus/happy-wire@0.1.0`**.
+- Removed dual-track Happy initialization (`skipHappy*` flags); Desktop and CLI now share one singleton lifecycle.
+- **Channel Bridge** accepts `agentRuntime` and forwards events correctly when only the new parameter is passed.
+- Added smoke tests for `happy/lib`, npm registry `happy-wire` resolution, and Channel Bridge initialization.
+
+### Changed
+
+- `electron-builder` unpack rules now target `node_modules/happy/**` instead of bundled `lib/happy-cli`.
+- `dependency-checker` resolves the Happy CLI from `node_modules/happy`.
+- CLI dist build copies `scripts/ensure-happy-wire.mjs` and runs it in postinstall alongside Happy tool unpacking.
+- Added `.npmrc` with `legacy-peer-deps=true` so `npm install` works out of the box.
+
+### Removed
+
+- Vendored trees: `lib/happy-cli`, `lib/happy-service`, `lib/happy-client`, `lib/happy-wire`.
+- Stale build copy rules for bundled `happy-cli/dist` and tool archives under `lib/`.
+
+### Notes
+
+- Run `npm install` at the repo root, then `cd packages/cli && npm install` before using the development CLI entrypoint.
+- `lib/happy/session-client/` remains an internal session adapter for full Cowork features (permissions, multi-session, daemon spawn); migration to `happy/lib` `ApiSessionClient` is planned separately.
+- Verified locally: CLI `start --daemon`, HTTP `:3333`, Happy Daemon, and HappyClient connection all succeed.
+
+---
+
 ## v0.3.0
 
 This release simplifies the local backend surface, hardens long-running session reliability, and aligns the entire app on the new DeepSeek model identifier and the renamed `happy` CLI runtime.

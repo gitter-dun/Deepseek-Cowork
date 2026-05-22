@@ -58,7 +58,7 @@ export const USER_SERVER_MODULES_DIR = join(DEPLOY_DIR, 'user-server-modules');
 export const SERVER_DOCS_DIR = join(PROJECT_ROOT, 'server', 'docs');
 
 // Happy 配置路径
-export const HAPPY_CONFIG_PATH = join(PROJECT_ROOT, '..', 'happy-service', 'happy-config.json');
+export const HAPPY_CONFIG_PATH = join(PROJECT_ROOT, '..', 'happy', 'config.js');
 
 // 应用名称
 export const APP_NAME = 'deepseek-cowork';

@@ -128,23 +128,19 @@ try {
     
     console.log('✓ CLI bundle created: dist/cli.mjs');
     
-    // 2. 复制 lib/ 目录（包含 local-service, happy-service 等）
+    // 2. 复制 lib/ 目录（local-service、lib/happy 等）
     console.log('\n📁 Copying lib/ directory...');
     copyDirSync(
         join(PROJECT_ROOT, 'lib'),
         join(DIST_DIR, 'lib'),
         { 
             exclude: [
-                '*.md',           // 排除文档
-                'unpacked',       // 排除解压后的二进制文件（150MB+）
-                'node_modules',   // 排除 node_modules（会在安装时重新安装）
-                'yarn.lock',      // 排除 lock 文件
-                'package-lock.json'
-            ],
-            // 白名单：这些目录即使匹配排除规则也会被复制
-            alwaysInclude: [
-                'dist',           // happy-cli/dist 必须包含（编译后的代码）
-                'archives'        // happy-cli/tools/archives 必须包含（工具压缩包）
+                '*.md',
+                'unpacked',
+                'node_modules',
+                'yarn.lock',
+                'package-lock.json',
+                '__tests__'
             ]
         }
     );
@@ -217,6 +213,15 @@ try {
     );
     console.log('✓ deploy/ directory copied');
     
+    // 5.1 复制 postinstall 脚本
+    console.log('\n📁 Copying scripts/ directory...');
+    mkdirSync(join(DIST_DIR, 'scripts'), { recursive: true });
+    copyFileSync(
+        join(PROJECT_ROOT, 'scripts/ensure-happy-wire.mjs'),
+        join(DIST_DIR, 'scripts/ensure-happy-wire.mjs')
+    );
+    console.log('✓ scripts/ensure-happy-wire.mjs copied');
+    
     // 6. 创建 dist/package.json
     console.log('\n📄 Creating package.json...');
     
@@ -243,10 +248,10 @@ try {
         "axios": "^1.15.2",
         "libsodium-wrappers": "^0.7.13",
         
-        // happy-cli 工具解压依赖
+        // happy npm 包工具解压依赖
         "tar": "^7.5.2",
         
-        // happy-cli 运行时依赖（daemon 启动所需）
+        // happy npm 包运行时依赖（daemon 启动所需）
         "@agentclientprotocol/sdk": "^0.14.1",
         "@anthropic-ai/claude-agent-sdk": "^0.2.96",
         "@anthropic-ai/sandbox-runtime": "^0.0.37",
@@ -254,7 +259,8 @@ try {
         "@noble/ed25519": "^3.0.0",
         "@noble/hashes": "^2.0.1",
         "@paralleldrive/cuid2": "^2.2.2",
-        "@slopus/happy-wire": "file:lib/happy-wire",
+        "@slopus/happy-wire": "^0.1.0",
+        "happy": "1.1.10-beta.6",
         "@stablelib/base64": "^2.0.1",
         "@stablelib/hex": "^2.0.1",
         "ai": "^5.0.107",
@@ -311,15 +317,15 @@ try {
         },
         main: "cli.mjs",
         scripts: {
-            // 安装后自动解压 ripgrep/difftastic 工具
-            "postinstall": "node lib/happy-cli/scripts/unpack-tools.cjs"
+            "postinstall": "node scripts/ensure-happy-wire.mjs && node node_modules/happy/scripts/unpack-tools.cjs"
         },
         files: [
             "cli.mjs",
             "lib",
             "server",
             "config",
-            "deploy"
+            "deploy",
+            "scripts"
         ],
         keywords: [
             "deepseek",

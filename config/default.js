@@ -28,7 +28,7 @@ module.exports = {
     // 是否启用 Happy Service（daemon + session 管理）
     enabled: true,
     
-    // happy-service 状态文件目录
+    // AgentRuntime 状态文件目录
     // 可以是绝对路径或相对路径
     // 如果为 null，将使用 database.directory/happy-state（默认 ./data/happy-state）
     stateDir: null,

@@ -11,7 +11,7 @@
     <img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License: MIT" />
   </a>
   <a href="https://github.com/imjszhang/Deepseek-Cowork">
-    <img src="https://img.shields.io/badge/Version-0.3.0-blue.svg?style=flat-square" alt="Version" />
+    <img src="https://img.shields.io/badge/Version-0.4.0-blue.svg?style=flat-square" alt="Version" />
   </a>
   <a href="https://www.electronjs.org/">
     <img src="https://img.shields.io/badge/Electron-28.x-47848F?style=flat-square&logo=electron" alt="Electron" />
@@ -151,7 +151,7 @@ DeepSeek Cowork integrates with [Happy](https://github.com/slopus/happy), an ope
 | Component | Description |
 |-----------|-------------|
 | **Claude Code** | Original Claude Code integrated as Agent kernel with all features and capabilities |
-| **[Happy](https://github.com/slopus/happy)** | Open-source AI session management with E2E encryption and mobile app support |
+| **[Happy](https://github.com/slopus/happy)** | Open-source AI session management (npm `happy@1.1.10-beta.6`), integrated via `lib/happy/` AgentRuntime |
 | **LocalService** | Local runtime that powers the desktop app, web UI, and CLI workflows |
 | **Electron App** | Cross-platform desktop interface integrating all components |
 
@@ -161,6 +161,7 @@ DeepSeek Cowork integrates with [Happy](https://github.com/slopus/happy), an ope
 git clone https://github.com/imjszhang/Deepseek-Cowork.git
 cd deepseek-cowork
 npm install
+cd packages/cli && npm install && cd ../..
 npm start
 ```
 
@@ -189,8 +190,8 @@ Visit [deepseek-cowork.com](https://deepseek-cowork.com) to try the web interfac
 ### Setup Local Service
 
 ```bash
-# Install CLI tool globally (latest version: 0.3.0)
-npm install -g deepseek-cowork@0.3.0
+# Install CLI tool globally (latest version: 0.4.0)
+npm install -g deepseek-cowork@0.4.0
 
 # Or start the same LocalService from the repository
 npm run local-service
@@ -204,7 +205,7 @@ deepseek-cowork open
 
 ### CLI Commands Reference
 
-> **CLI Version**: `deepseek-cowork@0.3.0`
+> **CLI Version**: `deepseek-cowork@0.4.0`
 
 | Command | Description |
 |---------|-------------|
@@ -284,7 +285,7 @@ Built packages will be output to the `dist/` directory.
 
 ### Version Management
 
-The project uses semantic versioning (SemVer). Current version: **V0.3.0**
+The project uses semantic versioning (SemVer). Current version: **V0.4.0**
 
 Update version numbers:
 
@@ -322,5 +323,7 @@ This project is built upon:
 **Making great AI assistants accessible to everyone**
 
 [![X](https://img.shields.io/badge/X-@imjszhang-000000?logo=x)](https://x.com/imjszhang)
+
+*Current version: V0.4.0 | Last updated: 2026-05-22*
 
 </div>

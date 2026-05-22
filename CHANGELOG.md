@@ -4,6 +4,36 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project follows Semantic Versioning.
 
+## [0.4.0] - 2026-05-22
+
+### Added
+
+- Added `lib/happy/` as the single Happy integration boundary, exporting **AgentRuntime** (with `HappyService` alias for compatibility).
+- Added `lib/happy/auth/` for shared credential/crypto helpers decoupled from the session WebSocket stack.
+- Added `lib/happy/__tests__/smoke.test.js` covering npm Happy CLI resolution, `happy/lib` exports, AgentRuntime init, Channel Bridge `agentRuntime`, and npm registry `@slopus/happy-wire` lockfile checks.
+- Added `scripts/ensure-happy-wire.mjs` postinstall helper to restore `@slopus/happy-wire` dist when the npm tarball omits it.
+- Added `.npmrc` with `legacy-peer-deps=true` for consistent dependency installation.
+
+### Changed
+
+- Bumped the project version from `0.3.0` to `0.4.0` across `package.json`, `packages/cli/package.json`, README files, renderer, and docs app.
+- Migrated Happy runtime from vendored `lib/happy-cli` to npm **`happy@1.1.10-beta.6`**, with `@slopus/happy-wire@0.1.0` from the public registry (no local `lib/happy-wire` link).
+- Refactored Electron, LocalService, CLI, server bootstrap, and Channel Bridge to use `lib/happy` AgentRuntime instead of legacy `lib/happy-service` / `lib/happy-client`.
+- Unified initialization: removed `skipHappyInitialization` / `skipHappyClientConnect` dual-track flags; Desktop and CLI share one AgentRuntime singleton path.
+- Updated `electron-builder.yml` `asarUnpack` to unpack `node_modules/happy/**` for packaged daemon/CLI execution.
+- Updated Channel Bridge to prefer `agentRuntime` and pass the resolved runtime into AIAdapter (fixes init when only `agentRuntime` is supplied).
+- Updated CLI build (`packages/cli/build.mjs`) to drop bundled `happy-cli` copy rules and include `ensure-happy-wire` in dist postinstall.
+
+### Removed
+
+- Removed vendored directories: `lib/happy-cli`, `lib/happy-service`, `lib/happy-client`, `lib/happy-wire`.
+- Removed stale `.gitignore` entries and build whitelist rules for bundled `lib/happy-cli` artifacts.
+
+### Fixed
+
+- Fixed `@slopus/happy-wire` resolving to a local `lib/happy-wire` path in `package-lock.json` after migration.
+- Fixed Channel Bridge silently failing to bind AIAdapter when callers passed only `agentRuntime`.
+
 ## [0.3.0] - 2026-04-29
 
 ### Added
